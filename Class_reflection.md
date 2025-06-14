@@ -125,24 +125,92 @@ void printObjectInfo(Object obj) {
     Class cls = obj.getClass();
 }
 
+要从Class实例获取获取的基本信息，参考下面的代码
 
+// reflection
+public class Main {
+    public static void main(String[] args) {
+        printClassInfo("".getClass());
+        printClassInfo(Runnable.class);
+        printClassInfo(java.time.Month.class);
+        printClassInfo(String[].class);
+        printClassInfo(int.class);
+    }
 
+    static void printClassInfo(Class cls) {
+        System.out.println("Class name: " + cls.getName());
+        System.out.println("Simple name: " + cls.getSimpleName());
+        if (cls.getPackage() != null) {
+            System.out.println("Package name: " + cls.getPackage().getName());
+        }
+        System.out.println("is interface: " + cls.isInterface());
+        System.out.println("is enum: " + cls.isEnum());
+        System.out.println("is array: " + cls.isArray());
+        System.out.println("is primitive: " + cls.isPrimitive());
+    }
+}
 
+注意到数组（例如String[]）也是一种类，而且不同于String.class，它的类名是[Ljava.lang.String;。
 
+此外，JVM为每一种基本类型 如int也创建了Class实例，通过int.class访问。
 
+如果获取到了一个Class实例，我们就可以通过该Class实例来创建对应类型的实例：
 
+// 获取String的Class实例:
+Class cls = String.class;
+// 创建一个String实例:
+String s = (String) cls.newInstance();
 
+上述代码相当于new String()。
+通过Class.newInstance()可以创建类实例，它的局限是：只能调用public的无参数构造方法。
+带参数的构造方法，或者非public的构造方法都无法通过Class.newInstance()被调用。
 
+# 动态加载
 
+JVM在执行Java程序的时候，并不是一次性把所有用到的class全部加载到内存，而是第一次需要用到class时才加载。例如：
 
+// Main.java
+public class Main {
+    public static void main(String[] args) {
+        if (args.length > 0) {
+            create(args[0]);
+        }
+    }
 
+    static void create(String name) {
+        Person p = new Person(name);
+    }
+}
 
+当执行Main.java时，由于用到了Main，因此，JVM首先会把Main.class加载到内存。
+然而，并不会加载Person.class，除非程序执行到create()方法，JVM发现需要加载Person类时，才会首次加载Person.class。
+如果没有执行create()方法，那么Person.class根本就不会被加载。
 
+这就是JVM动态加载class的特性。
 
+动态加载class的特性对于Java程序非常重要。
+利用JVM动态加载class的特性，我们才能在运行期根据条件加载不同的实现类。
+例如，Commons Logging总是优先使用Log4j，只有当Log4j不存在时，才使用JDK的logging。
+利用JVM动态加载特性，大致的实现代码如下：
 
+// Commons Logging优先使用Log4j:
+LogFactory factory = null;
+if (isClassPresent("org.apache.logging.log4j.Logger")) {
+    factory = createLog4j();
+} else {
+    factory = createJdkLog();
+}
 
+boolean isClassPresent(String name) {
+    try {
+        Class.forName(name);
+        return true;
+    } catch (Exception e) {
+        return false;
+    }
+}
 
-
+这就是为什么我们只需要把Log4j的jar包放到classpath中，Commons Logging就会自动使用Log4j的原因。
 
 
 
